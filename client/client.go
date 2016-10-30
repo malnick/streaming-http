@@ -62,6 +62,7 @@ func startClientGenerator(pipeWriter *io.PipeWriter) {
 	for {
 		time.Sleep(1 * time.Second)
 		sendme := fmt.Sprintf("It is now %v\n", time.Now())
+		fmt.Println("GENERATED MSG: ", sendme)
 		fmt.Fprintf(pipeWriter, sendme)
 	}
 }
@@ -73,8 +74,6 @@ func sendToServer(req *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	log.Println("Send no panic")
-
 	n, err := io.Copy(os.Stdout, resp.Body)
 	log.Fatalf("copied %d, %v", n, err)
 }
@@ -88,6 +87,7 @@ func readFromServer(req *http.Request) {
 	}
 	reader := bufio.NewReader(resp.Body)
 	for {
+		fmt.Println("READING BYTES")
 		line, err := reader.ReadBytes('\n')
 		if err != nil {
 			panic(err)
