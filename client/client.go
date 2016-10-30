@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 type IOData struct {
@@ -62,13 +63,14 @@ func startClientGenerator(pipeWriter *io.PipeWriter) {
 	for {
 		time.Sleep(1 * time.Second)
 		sendme := fmt.Sprintf("It is now %v\n", time.Now())
-		fmt.Println("GENERATED MSG: ", sendme)
+		log.Info("SENDING to /stdin %s", sendme)
 		fmt.Fprintf(pipeWriter, sendme)
 	}
 }
 
 func sendToServer(req *http.Request) {
-	fmt.Println("Opening /stdin stream to ", req.URL)
+	log.Infof("Opening stream to %s", req.URL)
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -79,7 +81,8 @@ func sendToServer(req *http.Request) {
 }
 
 func readFromServer(req *http.Request) {
-	fmt.Println("Opening /stdout stream to ", req.URL)
+	log.Infof("Opening stream to %s", req.URL)
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -87,12 +90,11 @@ func readFromServer(req *http.Request) {
 	}
 	reader := bufio.NewReader(resp.Body)
 	for {
-		fmt.Println("READING BYTES")
 		line, err := reader.ReadBytes('\n')
 		if err != nil {
 			panic(err)
 		}
-		log.Println("ECHO from /stdout: ", string(line))
+		log.Infof("ECHO RECEIVED: %s", string(line))
 	}
 }
 
@@ -111,4 +113,5 @@ func StartClient() {
 	go startClientGenerator(pipeWriter)
 	go sendToServer(stdinReq)
 	readFromServer(stdoutReq)
+
 }
