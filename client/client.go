@@ -18,19 +18,12 @@ type IOData struct {
 	Foo string `json:"foo"`
 }
 
-var (
-	host           = flag.String("host", "localhost", "IP address of host")
-	stdinEndpoint  = flag.String("stdin", "/stdin", "Stdin endpoint on remote")
-	stdoutEndpoint = flag.String("stdout", "/stdout", "Stdout endpoint on remote")
-	port           = flag.String("port", "8000", "Port to hit on remote")
-)
-
-func getStdinRequester(pipeReader *io.PipeReader) (*http.Request, error) {
-	thisHost := fmt.Sprintf("%s:%s", *host, *port)
+func getStdinRequester(pipeReader *io.PipeReader, host, port, stdinEndpoint string) (*http.Request, error) {
+	thisHost := fmt.Sprintf("%s:%s", host, port)
 	hitme := url.URL{
 		Scheme: "http",
 		Host:   thisHost,
-		Path:   *stdinEndpoint,
+		Path:   stdinEndpoint,
 	}
 
 	headers := map[string]string{
@@ -49,12 +42,12 @@ func getStdinRequester(pipeReader *io.PipeReader) (*http.Request, error) {
 	return req, err
 }
 
-func getStdoutRequester() (*http.Request, error) {
-	thisHost := fmt.Sprintf("%s:%s", *host, *port)
+func getStdoutRequester(host, port, stdoutEndpoint string) (*http.Request, error) {
+	thisHost := fmt.Sprintf("%s:%s", host, port)
 	hitme := url.URL{
 		Scheme: "http",
 		Host:   thisHost,
-		Path:   *stdoutEndpoint,
+		Path:   stdoutEndpoint,
 	}
 	return http.NewRequest("GET", hitme.String(), nil)
 }
@@ -99,13 +92,22 @@ func readFromServer(req *http.Request) {
 }
 
 func StartClient() {
+	cf := flag.NewFlagSet("", flag.ContinueOnError)
+	var (
+		host           = cf.String("host", "localhost", "IP address of host")
+		stdinEndpoint  = cf.String("stdin", "/stdin", "Stdin endpoint on remote")
+		stdoutEndpoint = cf.String("stdout", "/stdout", "Stdout endpoint on remote")
+		port           = cf.String("port", "8000", "Port to hit on remote")
+	)
+	cf.Parse(os.Args[2:])
+
 	pipeReader, pipeWriter := io.Pipe()
-	stdinReq, err := getStdinRequester(pipeReader)
+	stdinReq, err := getStdinRequester(pipeReader, *host, *port, *stdinEndpoint)
 	if err != nil {
 		panic(err)
 	}
 
-	stdoutReq, err := getStdoutRequester()
+	stdoutReq, err := getStdoutRequester(*host, *port, *stdoutEndpoint)
 	if err != nil {
 		panic(err)
 	}
