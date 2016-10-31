@@ -53,12 +53,16 @@ func getStdoutRequester(host, port, stdoutEndpoint string) (*http.Request, error
 }
 
 func startClientGenerator(pipeWriter *io.PipeWriter) {
-	for {
+	for x := 0; x <= 5; x++ {
 		time.Sleep(1 * time.Second)
 		sendme := fmt.Sprintf("It is now %v\n", time.Now())
 		log.Info("SENDING to /stdin %s", sendme)
 		fmt.Fprintf(pipeWriter, sendme)
 	}
+	// Send EOF
+	log.Warn("Sending EOF to /stdin")
+	fmt.Fprintf(pipeWriter, "")
+
 }
 
 func sendToServer(req *http.Request) {

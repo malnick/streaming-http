@@ -3,7 +3,6 @@ package server
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 
@@ -11,10 +10,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var (
-	pipeReader, pipeWriter = io.Pipe()
-	inChan                 = make(chan string, 10)
-)
+var inChan = make(chan string, 10)
 
 func StdOutHandler(w http.ResponseWriter, r *http.Request) {
 	log.Info("Request made on /stdout")
