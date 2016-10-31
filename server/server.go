@@ -40,12 +40,16 @@ func StdInHandler(w http.ResponseWriter, r *http.Request) {
 
 	reader := bufio.NewReader(r.Body)
 	for {
-		line, err := reader.ReadBytes('\n')
+		chunk, err := reader.ReadBytes('\n')
 		if err != nil {
 			panic(err)
 		}
-		log.Infof("Message received from client on /stdin: %s", string(line))
-		inChan <- string(line)
+		if len(chunk) == 0 {
+			// Quit on EOF
+			return
+		}
+		log.Infof("Message received from client on /stdin: %s", string(chunk))
+		inChan <- string(chunk)
 	}
 }
 

@@ -18,7 +18,7 @@ type IOData struct {
 	Foo string `json:"foo"`
 }
 
-func getStdinRequester(pipeReader *io.PipeReader, host, port, stdinEndpoint string) (*http.Request, error) {
+func getStdinRequester(pipeReader io.Reader, host, port, stdinEndpoint string) (*http.Request, error) {
 	thisHost := fmt.Sprintf("%s:%s", host, port)
 	hitme := url.URL{
 		Scheme: "http",
@@ -38,6 +38,7 @@ func getStdinRequester(pipeReader *io.PipeReader, host, port, stdinEndpoint stri
 	for k, v := range headers {
 		req.Header.Add(k, v)
 	}
+	req.Close = true
 
 	return req, err
 }
@@ -53,28 +54,29 @@ func getStdoutRequester(host, port, stdoutEndpoint string) (*http.Request, error
 }
 
 func startClientGenerator(pipeWriter *io.PipeWriter) {
-	for x := 0; x <= 5; x++ {
+	num := 10
+	for x := 0; x <= num; x++ {
 		time.Sleep(1 * time.Second)
-		sendme := fmt.Sprintf("It is now %v\n", time.Now())
-		log.Info("SENDING to /stdin %s", sendme)
-		fmt.Fprintf(pipeWriter, sendme)
+		sendme := fmt.Sprintf("It is now %v\n\r", time.Now())
+		log.Info("SENDING to /stdin: ", sendme)
+		n, err := io.WriteString(pipeWriter, sendme)
+		if err != nil && err != io.EOF {
+			log.Fatal(err)
+		}
+		log.Info("Wrote ", n, " sized chunk")
 	}
-	// Send EOF
-	log.Warn("Sending EOF to /stdin")
-	fmt.Fprintf(pipeWriter, "")
-
+	log.Warn("Sent ", num, " timestamps, sending EOF")
+	pipeWriter.Close()
 }
 
 func sendToServer(req *http.Request) {
 	log.Infof("Opening stream to %s", req.URL)
-
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		panic(err)
 	}
-	n, err := io.Copy(os.Stdout, resp.Body)
-	log.Fatalf("copied %d, %v", n, err)
+	log.Info("Client returned ", resp.StatusCode)
 }
 
 func readFromServer(req *http.Request) {
