@@ -55,18 +55,27 @@ func getStdoutRequester(host, port, stdoutEndpoint string) (*http.Request, error
 
 func startClientGenerator(pipeWriter *io.PipeWriter) {
 	num := 10
+
+	// Double chunk the data to ensure proxies do not
+	// screw up the forwarding with content-length headers
+	// chunkedWriter := httputil.NewChunkedWriter(pipeWriter)
+
 	for x := 0; x <= num; x++ {
 		time.Sleep(1 * time.Second)
 		sendme := fmt.Sprintf("It is now %v\n\r", time.Now())
-		log.Info("SENDING to /stdin: ", sendme)
+		log.Info("Sending to /stdin: ", sendme)
+		// Example of double chunked...
+		// n, err := chunkedWriter.Write([]byte(sendme))
 		n, err := io.WriteString(pipeWriter, sendme)
 		if err != nil && err != io.EOF {
 			log.Fatal(err)
 		}
-		log.Info("Wrote ", n, " sized chunk")
+		log.Info("Wrote ", n, " byte chunk")
 	}
 	log.Warn("Sent ", num, " timestamps, sending EOF")
 	pipeWriter.Close()
+	// Had we double chunked...
+	// chunkedWriter.Close()
 }
 
 func sendToServer(req *http.Request) {
@@ -89,11 +98,11 @@ func readFromServer(req *http.Request) {
 	}
 	reader := bufio.NewReader(resp.Body)
 	for {
-		line, err := reader.ReadBytes('\n')
+		chunk, err := reader.ReadBytes('\n')
 		if err != nil {
 			panic(err)
 		}
-		log.Infof("ECHO RECEIVED: %s", string(line))
+		log.Infof("Received from /stdout: %s", string(chunk))
 	}
 }
 
